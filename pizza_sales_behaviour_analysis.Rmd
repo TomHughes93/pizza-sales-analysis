@@ -1,0 +1,330 @@
+# Consumer Choice and Behaviour in Pizza Sales
+
+## Business Question
+This analysis explores how consumers make purchasing decisions when buying pizza, with a focus on how price, portion size, and product category influence sales patterns. The aim is to identify behavioural trends in real-world sales data.
+
+## Dataset Overview
+The dataset contains transactional pizza sales data from 2015, including information on order dates and times, pizza sizes, categories, quantities sold, and prices. This data provides a suitable basis for analysing consumer choice and purchasing behaviour in a retail food context.
+
+## Data Preparation
+The data preparation stage focuses on importing the dataset, checking data structure and data types, and ensuring the data is suitable for analysis. This includes verifying date and time formats, numeric fields, and identifying any missing or inconsistent values before proceeding to analysis.
+
+```{r}
+# Install package 
+install.packages("tidyverse")
+
+# Load required libraries
+library(tidyverse)
+
+# Import the pizza sales dataset
+pizza_data <- read_csv("pizza_sales.csv")
+
+```
+### Sanity check 
+```{r}
+glimpse(pizza_data)
+
+```
+A sanity check was performed to confirm that all columns were correctly parsed. Numeric fields such as quantity, unit price, and total price were imported as numeric values, categorical variables were stored as character strings, and the order time column was correctly recognised as a time variable. No structural issues were identified.
+
+### Organisation 
+```{r}
+pizza_data <- pizza_data %>%
+  mutate(
+    order_date = as.Date(order_date, format = "%m/%d/%Y"),
+    calculated_total = unit_price * quantity)
+
+```
+In this step, the order_date column is converted from a character string to a proper Date format to enable time-based analysis. A new column, calculated_total, is also created to store the total price for each order line, calculated as unit_price × quantity. These transformations prepare the dataset for accurate aggregation and analysis while keeping the workflow clean and reproducible.
+
+At this stage, the dataset has been reviewed, validated, and minimally cleaned. All key variables required for analysis are correctly typed, and no further preprocessing is required before exploratory analysis.
+
+To confirm that the cleaning steps were successful, the dataset is briefly inspected using glimpse(). This allows us to verify that order_date is now stored as a Date object and that the calculated_total column has been correctly added as a numeric value. This quick check ensures the dataset is ready for further analysis.
+
+```{r}
+glimpse(pizza_data)
+```
+```{r}
+# Basic checks after cleaning
+nrow(pizza_data)
+min(pizza_data$order_date)
+max(pizza_data$order_date)
+summary(pizza_data$calculated_total)
+
+```
+A sanity check confirmed the dataset contains 48,620 records spanning the full 2015 calendar year. Calculated order values fall within realistic price ranges and show no signs of data corruption or extreme skew, indicating the data is suitable for analysis.
+
+## Exploratory Data Analysis
+
+### Which pizza categories generate the most revenue and sales volume?
+
+```{r}
+revenue_by_category <- pizza_data %>%
+  group_by(pizza_category) %>%
+  summarise(
+    total_revenue = sum(calculated_total),
+    total_pizzas_sold = sum(quantity),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(total_revenue))
+```
+Revenue and sales volume were aggregated by pizza category to identify which product types contribute most to overall performance. This provides a high-level view of customer preferences and category dominance.
+```{r}
+revenue_by_category
+```
+Classic pizzas generate the highest total revenue and sales volume, indicating strong and consistent customer demand. Supreme pizzas achieve similar revenue with fewer units sold, suggesting a higher average price point. Chicken and Veggie categories contribute comparable revenue levels, with Veggie pizzas selling slightly more units but at lower average prices. Overall, revenue is well distributed across categories, indicating a balanced sales mix.
+
+```{r}
+library(ggplot2)
+
+ggplot(revenue_by_category, aes(x = pizza_category, y = total_revenue)) +
+  geom_col(fill = "steelblue") +
+  labs(
+    title = "Total Revenue by Pizza Category",
+    x = "Pizza Category",
+    y = "Total Revenue"
+  ) 
+  theme_minimal()
+
+```
+The bar chart created in R shows total revenue by pizza category. Classic pizzas generate the highest revenue, followed closely by Supreme pizzas. Chicken and Veggie categories contribute similar revenue levels, reinforcing the relatively balanced distribution of sales across categories.
+
+###Revenue by Pizza Size
+```{r}
+revenue_by_size <- pizza_data %>%
+  group_by(pizza_size) %>%
+  summarise(
+    total_revenue = sum(calculated_total),
+    total_pizzas_sold = sum(quantity),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(total_revenue))
+
+revenue_by_size
+
+```
+```{r}
+library(ggplot2)
+
+# Bar chart: Total revenue by pizza size
+ggplot(revenue_by_size, aes(x = pizza_size, y = total_revenue, fill = pizza_size)) +
+  geom_col() +
+  labs(
+    title = "Total Revenue by Pizza Size",
+    x = "Pizza Size",
+    y = "Total Revenue ($)"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+```
+The bar chart illustrates total revenue by pizza size. Large pizzas generate the most revenue, followed by medium and small sizes. This clearly shows that larger pizzas contribute disproportionately to revenue, even if smaller sizes sell more units.
+```{r}
+# Bar chart: Total pizzas sold by size
+ggplot(revenue_by_size, aes(x = pizza_size, y = total_pizzas_sold, fill = pizza_size)) +
+  geom_col() +
+  labs(
+    title = "Total Pizzas Sold by Size",
+    x = "Pizza Size",
+    y = "Total Pizzas Sold"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+```
+This bar chart shows the total number of pizzas sold by size. Medium pizzas sell in higher quantities than large or small sizes, indicating that while large pizzas generate more revenue, medium pizzas are more popular by volume. Together with the revenue chart, this highlights the trade-off between price and quantity in pizza sales.
+
+### Revenue by Pizza Category
+```{r}
+# Aggregate total revenue and total units by pizza category
+revenue_by_category <- pizza_data %>%
+  group_by(pizza_category) %>%
+  summarise(
+    total_revenue = sum(calculated_total),
+    total_pizzas_sold = sum(quantity),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(total_revenue))
+
+# Take a quick look
+revenue_by_category
+
+```
+```{r}
+ggplot(revenue_by_category, aes(x = reorder(pizza_category, -total_revenue), y = total_revenue, fill = pizza_category)) +
+  geom_col() +
+  labs(
+    title = "Total Revenue by Pizza Category",
+    x = "Pizza Category",
+    y = "Total Revenue ($)"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+```
+This chart shows total revenue by pizza category. Classic and Supreme pizzas generate the highest revenue, followed by Chicken and Veggie. Comparing this with total pizzas sold will highlight which categories are both popular in quantity and high-value in revenue, helping identify top-performing pizza types.
+
+### Total revenue vs total pizzas sold
+```{r}
+ggplot(revenue_by_category, aes(x = total_pizzas_sold, y = total_revenue, label = pizza_category, color = pizza_category)) +
+  geom_point(size = 4, alpha = 0.7) +
+  geom_text(vjust = -0.7, hjust = 0.5, size = 3) +
+  labs(
+    title = "Pizza Category Performance: Revenue vs Units Sold",
+    x = "Total Pizzas Sold",
+    y = "Total Revenue ($)"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+```
+### Average unit price per category
+```{r}
+revenue_by_category <- revenue_by_category %>%
+  left_join(
+    pizza_data %>%
+      group_by(pizza_category) %>%
+      summarise(avg_unit_price = mean(unit_price), .groups = "drop"),
+    by = "pizza_category"
+  )
+
+```
+```{r}
+ggplot(revenue_by_category, aes(x = total_pizzas_sold, y = total_revenue, 
+                                size = avg_unit_price, label = pizza_category, color = pizza_category)) +
+  geom_point(alpha = 0.7) +
+  geom_text(vjust = -0.7, hjust = 0.5, size = 3) +
+  scale_size_continuous(range = c(3, 10)) +
+  labs(
+    title = "Pizza Category Performance: Revenue, Units Sold, and Average Price",
+    x = "Total Pizzas Sold",
+    y = "Total Revenue ($)",
+    size = "Average Unit Price ($)"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "right")
+
+```
+This bubble chart compares pizza categories by total pizzas sold (x-axis) and total revenue (y-axis), with bubble size representing average price. It highlights which categories are the most popular, generate the highest revenue, and command higher prices.
+
+### Sales by month 2015
+```{r}
+monthly_sales <- pizza_data %>%
+  mutate(month = format(order_date, "%Y-%m")) %>%
+  group_by(month, pizza_category) %>%
+  summarise(
+    total_revenue = sum(calculated_total),
+    total_units = sum(quantity),
+    .groups = "drop"
+  )
+
+```
+```{r}
+ggplot(monthly_sales, aes(x = month, y = total_revenue, color = pizza_category, group = pizza_category)) +
+  geom_line(size = 1) +
+  geom_point(size = 2) +
+  labs(
+    title = "Monthly Revenue by Pizza Category in 2015",
+    x = "Month",
+    y = "Total Revenue ($)",
+    color = "Pizza Category"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+This line chart shows monthly revenue trends for each pizza category throughout 2015. It highlights seasonal patterns, peaks in demand, and category performance changes over time, helping identify which pizzas consistently generate revenue and which have more fluctuation.
+
+### Monthly units sold 
+```{r}
+ggplot(monthly_sales, aes(x = month, y = total_units, color = pizza_category, group = pizza_category)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2) +
+  labs(
+    title = "Monthly Units Sold by Pizza Category in 2015",
+    x = "Month",
+    y = "Total Pizzas Sold",
+    color = "Pizza Category"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+This chart shows monthly pizza sales volume by category. Comparing it with the revenue chart highlights which categories are high-volume but possibly lower-priced, versus categories that generate high revenue with fewer sales, revealing patterns in customer demand and purchasing behaviour.
+
+### Per-pizza average revenue trend
+#### Formatting for long data
+```{r}
+library(tidyr)
+
+# Pivot data to long format for faceting
+monthly_long <- monthly_sales %>%
+  pivot_longer(
+    cols = c(total_revenue, total_units),
+    names_to = "metric",
+    values_to = "value"
+  )
+
+```
+```{r}
+ggplot(monthly_long, aes(x = month, y = value, color = pizza_category, group = pizza_category)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2) +
+  facet_wrap(~metric, scales = "free_y", ncol = 1, labeller = as_labeller(c(total_revenue = "Revenue ($)", total_units = "Units Sold"))) +
+  labs(
+    title = "Monthly Pizza Performance by Category",
+    x = "Month",
+    y = "",
+    color = "Pizza Category"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+This faceted chart shows monthly revenue and units sold by pizza category. By comparing both metrics side by side, we can identify pizzas that are high-volume but lower-priced versus those that generate high revenue with fewer sales. This provides a clear view of category performance and potential pricing opportunities.
+
+### Average revenue per pizza per month
+```{r}
+avg_revenue_monthly <- pizza_data %>%
+  mutate(month = format(order_date, "%Y-%m")) %>%
+  group_by(month, pizza_category) %>%
+  summarise(
+    total_revenue = sum(calculated_total),
+    total_units = sum(quantity),
+    avg_revenue_per_pizza = total_revenue / total_units,
+    .groups = "drop"
+  )
+
+```
+```{r}
+ggplot(avg_revenue_monthly, aes(x = month, y = avg_revenue_per_pizza, color = pizza_category, group = pizza_category)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2) +
+  labs(
+    title = "Monthly Average Revenue per Pizza by Category",
+    x = "Month",
+    y = "Average Revenue per Pizza ($)",
+    color = "Pizza Category"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+This visual shows the average revenue per pizza by category over time.
+Supreme and Chicken pizzas consistently generate higher average revenue per unit, suggesting these categories command higher prices rather than relying solely on volume. Classic and Veggie pizzas show lower average revenue per pizza, indicating they may be more price-competitive or driven by higher sales volumes.
+
+## Summary 
+This analysis explored pizza sales performance across categories using revenue, units sold, and time-based trends. The results show clear differences between categories in terms of scale, pricing, and sales behaviour.
+
+Classic pizzas generate the highest overall sales volume, indicating broad customer appeal and consistent demand. In contrast, Supreme and Chicken pizzas achieve higher average revenue per unit, suggesting these categories rely more on premium pricing than sheer volume. Veggie pizzas sit between these two patterns, with moderate volume and revenue performance.
+
+Monthly trends show relatively stable demand throughout the year, with predictable fluctuations rather than extreme spikes. This suggests that pizza sales are driven by regular consumption habits rather than highly seasonal behaviour.
+
+Overall, the findings highlight a trade-off between volume and value. High-volume categories provide stability and scale, while higher-priced categories contribute disproportionately to revenue per sale. For decision-makers, this suggests opportunities to balance operational focus between popular, high-volume products and premium offerings that maximise revenue per order.
+
+## Limitations and Next Steps
+
+This analysis is based on a single year of transactional data from one pizza business, which limits the ability to assess long-term trends or seasonality across multiple years. The dataset also lacks customer-level information, such as repeat purchases or demographics, which restricts deeper behavioural analysis.
+
+Future analysis could explore multi-year sales data to identify longer-term growth patterns, or incorporate customer and promotional data to better understand purchasing behaviour. Further breakdowns by pizza size or time of day could also provide more operational insight.
+
+
