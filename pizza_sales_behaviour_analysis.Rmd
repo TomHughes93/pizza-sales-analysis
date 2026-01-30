@@ -74,22 +74,22 @@ revenue_by_category
 ```
 Classic pizzas generate the highest total revenue and sales volume, indicating strong and consistent customer demand. Supreme pizzas achieve similar revenue with fewer units sold, suggesting a higher average price point. Chicken and Veggie categories contribute comparable revenue levels, with Veggie pizzas selling slightly more units but at lower average prices. Overall, revenue is well distributed across categories, indicating a balanced sales mix.
 
-```{r}
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+# Loading the library quietly
 library(ggplot2)
 
+# This will display the code and the plot, but suppress any console text
 ggplot(revenue_by_category, aes(x = pizza_category, y = total_revenue)) +
   geom_col(fill = "steelblue") +
   labs(
     title = "Total Revenue by Pizza Category",
     x = "Pizza Category",
     y = "Total Revenue"
-  ) 
-  theme_minimal()
-
+  )
 ```
 The bar chart created in R shows total revenue by pizza category. Classic pizzas generate the highest revenue, followed closely by Supreme pizzas. Chicken and Veggie categories contribute similar revenue levels, reinforcing the relatively balanced distribution of sales across categories.
 
-###Revenue by Pizza Size
+### Revenue by Pizza Size
 ```{r}
 revenue_by_size <- pizza_data %>%
   group_by(pizza_size) %>%
